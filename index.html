@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sovienter - Document Scanner | Scan to PDF & JPG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#111;color:#fff;text-align:center}
+.header{padding:25px 15px;background:#000}
+.header h1{margin:0;font-size:34px;letter-spacing:2px}
+.header h1 span{color:#00e676}
+.header p{color:#ccc}
+.box{background:#222;margin:15px;padding:15px;border-radius:12px}
+button{padding:13px 18px;margin:6px;border:none;border-radius:10px;font-weight:bold;font-size:16px;cursor:pointer}
+.green{background:#00e676}.blue{background:#2979ff;color:#fff}.orange{background:#ff9800}.red{background:#ff1744;color:#fff}
+video,canvas,img{width:100%;max-width:480px;border-radius:10px;margin-top:10px;background:#000}
+select{padding:10px;border-radius:8px;font-size:16px;width:90%}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>SOVI<span>ENTER</span></h1>
+<p>Document Scanner - Scan | Edit | PDF | JPG</p>
+<p>100% Free | No Watermark | No Sign Up</p>
+</div>
+
+<div class="box">
+<button class="green" onclick="openCam()">📷 Camera Kholो</button>
+<button class="blue" onclick="document.getElementById('file').click()">🖼️ Gallery Se Lo</button>
+<input type="file" id="file" accept="image/*" hidden onchange="loadFile(event)">
+<br>
+<video id="video" autoplay playsinline style="display:none"></video><br>
+<button class="green" id="clickBtn" onclick="takePhoto()" style="display:none">📸 Photo Lo</button>
+<canvas id="canvas" style="display:none"></canvas>
+<img id="preview" style="display:none">
+</div>
+
+<div class="box" id="editBox" style="display:none">
+<h3>Edit Karo</h3>
+<select id="filter" onchange="applyFilter()">
+<option value="none">Original</option>
+<option value="scan">Scan - Black & White</option>
+<option value="gray">Grayscale</option>
+<option value="bright">Bright + Sharp</option>
+</select><br><br>
+<button class="orange" onclick="rotate()">🔄 Rotate</button>
+<button class="red" onclick="clearAll()">❌ Clear</button>
+<br><br>
+<button class="green" onclick="downloadJPG()">⬇️ JPG Download</button>
+<button class="blue" onclick="downloadPDF()">⬇️ PDF Download</button>
+</div>
+
+<div class="box">
+<p>✅ Aadhar, PAN, Notes, Bill, Photo - Sab Scan Karo</p>
+<p>✅ PDF Banao | JPG Banao | WhatsApp Pe Bhejo</p>
+</div>
+
+<script>
+let video=document.getElementById('video'), canvas=document.getElementById('canvas'), preview=document.getElementById('preview'), ctx=canvas.getContext('2d'), stream=null, angle=0, currentFilter='none';
+async function openCam(){
+try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});video.srcObject=stream;video.style.display='block';document.getElementById('clickBtn').style.display='inline-block';}catch(e){alert('Camera allow karo bhai');}
+}
+function takePhoto(){
+canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.save();ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);ctx.drawImage(video,-canvas.width/2,-canvas.height/2);ctx.restore();
+preview.src=canvas.toDataURL('image/jpeg',0.9);preview.style.display='block';document.getElementById('editBox').style.display='block';
+if(stream)stream.getTracks().forEach(t=>t.stop());video.style.display='none';document.getElementById('clickBtn').style.display='none';
+}
+function loadFile(e){
+let r=new FileReader();r.onload=function(ev){let im=new Image();im.onload=function(){canvas.width=im.width;canvas.height=im.height;ctx.drawImage(im,0,0);preview.src=canvas.toDataURL('image/jpeg',0.9);preview.style.display='block';document.getElementById('editBox').style.display='block';};im.src=ev.target.result;};r.readAsDataURL(e.target.files[0]);
+}
+function applyFilter(){
+currentFilter=document.getElementById('filter').value;
+if(currentFilter=='scan')preview.style.filter='grayscale(1) contrast(1.6) brightness(1.2)';
+else if(currentFilter=='gray')preview.style.filter='grayscale(1)';
+else if(currentFilter=='bright')preview.style.filter='brightness(1.3) contrast(1.2) saturate(1.2)';
+else preview.style.filter='none';
+}
+function rotate(){angle=(angle+90)%360;preview.style.transform='rotate('+angle+'deg)';}
+function clearAll(){preview.style.display='none';document.getElementById('editBox').style.display='none';preview.style.filter='none';preview.style.transform='rotate(0deg)';angle=0;}
+function downloadJPG(){let a=document.createElement('a');a.download='sovienter-scan.jpg';a.href=preview.src;a.click();}
+async function downloadPDF(){const {jsPDF}=window.jspdf;let pdf=new jsPDF();let img=new Image();img.src=preview.src;img.onload=function(){let w=pdf.internal.pageSize.getWidth();let h=(img.height/img.width)*w;pdf.addImage(preview.src,'JPEG',0,0,w,h);pdf.save('sovienter-scan.pdf');};}
+</script>
+</body>
+</html>
