@@ -1,134 +1,223 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOVIENTER - AI Document Scanner</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sovienter Scan</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-*{box-sizing:border-box} body{background:#000;color:#fff;font-family:Arial;text-align:center;margin:0;padding:15px}
-h1{font-size:40px;margin:5px} h1 span{color:#00e676} p{color:#aaa;margin:5px}
-.btn{background:#00c9a7;color:#000;border:0;padding:13px 18px;font-size:17px;font-weight:bold;border-radius:10px;margin:6px;cursor:pointer}
-.btn2{background:#fff}.btn3{background:#25D366}.btn4{background:#ffcc00}
-.box{background:#111;padding:15px;border-radius:15px;margin-top:10px}
-img{max-width:100%;border-radius:10px} input[type=file]{display:none}
-input[type=range]{width:90%} .card{background:#1a1a1a;padding:10px;border-radius:10px;margin:10px 0}
-label{font-size:14px;color:#ccc}
-#cropImg{max-height:380px}
-.thumb{width:70px;height:70px;object-fit:cover;border-radius:8px;border:2px solid #00e676;margin:3px}
+:root{--bg:#eef2f5;--panel:#fff;--ink:#14212b;--mut:#5d6b78;--line:#d5dde4;--acc:#2447f5;--hl:#ffd84d}
+@media(prefers-color-scheme:dark){:root{--bg:#0f161c;--panel:#18222b;--ink:#eaf0f5;--mut:#92a1af;--line:#2a3743}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:18px;margin:0;letter-spacing:.2px}
+h1 span{color:var(--acc)}
+button,label.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 13px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button:hover,label.btn:hover{border-color:var(--acc)}
+button:focus-visible,label.btn:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+input[type=file]{position:absolute;opacity:0;width:0;height:0}
+main{display:grid;grid-template-columns:1fr 280px;gap:14px;padding:14px;max-width:1100px;margin:auto}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:300px;display:flex;align-items:center;justify-content:center}
+.wrap{position:relative;display:inline-block;max-width:100%;touch-action:none}
+canvas#cv{max-width:100%;max-height:68vh;display:block}
+#crop{position:absolute;border:2px solid var(--hl);box-shadow:0 0 0 9999px rgba(0,0,0,.45);display:none}
+.h{position:absolute;width:26px;height:26px;background:var(--hl);border-radius:50%;margin:-13px;touch-action:none}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.row button{flex:1 1 auto;justify-content:center}
+label.s{display:flex;justify-content:space-between;color:var(--mut);font-size:13px}
+input[type=range]{width:100%;accent-color:var(--acc)}
+#strip{display:flex;gap:8px;overflow-x:auto;padding:10px 14px;max-width:1100px;margin:auto}
+#strip canvas{height:84px;border:2px solid var(--line);border-radius:6px;cursor:pointer;flex:none;background:#fff}
+#strip canvas.sel{border-color:var(--acc)}
+.empty{text-align:center;color:var(--mut);padding:30px}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+#msg{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;display:none;z-index:9}
 </style>
 </head>
 <body>
-<h1>SOVI<span>ENTER</span></h1>
-<p>AI Document Scanner - Pro Edition</p>
-<p>✨ Auto Crop | AI Enhance | Multi-Page PDF | 100% Free</p>
+<header>
+  <h1><span>Sovienter</span> Scan</h1>
+  <div class="row">
+    <label class="btn p">📷 Scan<input id="cam" type="file" accept="image/*" capture="environment"></label>
+    <label class="btn">🖼 Upload<input id="up" type="file" accept="image/*" multiple></label>
+  </div>
+</header>
 
-<div class="box">
-<label for="cam" class="btn">📷 Camera</label>
-<label for="gal" class="btn btn2">🖼️ Gallery</label>
-<input type="file" id="cam" accept="image/*" capture="environment">
-<input type="file" id="gal" accept="image/*" multiple>
-<div id="pages"></div>
-<p id="hint" style="color:#00e676">Photo lo, fir neeche Crop karo</p>
-<div><img id="cropImg" style="display:none"></div>
+<main>
+  <div class="stage" id="stage">
+    <div class="empty" id="empty"><b>Koi page nahi hai</b>Scan dabao ya photo upload karo.</div>
+    <div class="wrap" id="wrap" style="display:none">
+      <canvas id="cv"></canvas>
+      <div id="crop"><div class="h" data-c="tl" style="left:0;top:0"></div><div class="h" data-c="tr" style="right:0;top:0;margin:-13px -13px 0 0"></div><div class="h" data-c="bl" style="left:0;bottom:0;margin:0 0 -13px -13px"></div><div class="h" data-c="br" style="right:0;bottom:0;margin:0 -13px -13px 0"></div></div>
+    </div>
+  </div>
 
-<div id="editor" style="display:none">
-<div class="card">
-<button class="btn" onclick="doCrop()">✂️ Crop Confirm Karo</button>
-<button class="btn btn4" onclick="rotate()">🔄 Rotate</button>
-<button class="btn btn4" onclick="aiEnhance()">🤖 AI Auto Enhance</button>
-</div>
-<div class="card">
-<label>Brightness</label><br><input type="range" id="br" min="50" max="150" value="100" oninput="applyFilter()"><br>
-<label>Contrast</label><br><input type="range" id="ct" min="50" max="200" value="100" oninput="applyFilter()"><br>
-<label>Grayscale / B&W</label><br><input type="range" id="gs" min="0" max="100" value="0" oninput="applyFilter()">
-</div>
-<div class="card">
-<button class="btn" onclick="setFilter('color')">🎨 Color</button>
-<button class="btn" onclick="setFilter('bw')">⚫ Black & White</button>
-<button class="btn" onclick="setFilter('scan')">📄 Scanner Mode</button>
-</div>
-<div><img id="preview" style="display:none"></div>
-<div>
-<button class="btn" onclick="addPage()">➕ Ye Page Add Karo</button>
-<button class="btn btn2" onclick="downloadJPG()">⬇️ JPG</button>
-</div>
-<div>
-<button class="btn" onclick="downloadPDF()">📄 Sabka PDF Banao</button>
-<button class="btn btn3" onclick="shareWA()">WhatsApp Pe Bhejo</button>
-</div>
-</div>
-</div>
-<p style="font-size:12px">Sovienter - Made for India | No Watermark | Private - Photo sirf aapke phone me rehta hai</p>
+  <aside>
+    <div>
+      <label class="s">Filter</label>
+      <div class="row" id="filters">
+        <button data-f="orig">Original</button>
+        <button data-f="magic" class="on">Magic</button>
+        <button data-f="gray">Gray</button>
+        <button data-f="bw">B&amp;W</button>
+      </div>
+    </div>
+    <div><label class="s">Brightness <span id="bv">0</span></label><input type="range" id="br" min="-80" max="80" value="0"></div>
+    <div><label class="s">Contrast <span id="cvv">0</span></label><input type="range" id="ct" min="-60" max="80" value="0"></div>
+    <div class="row">
+      <button id="rl">⟲ Left</button><button id="rr">⟳ Right</button>
+      <button id="cropBtn">✂ Crop</button><button id="apply" style="display:none" class="p">✔ Apply</button>
+    </div>
+    <div class="row"><button id="del">🗑 Delete page</button></div>
+    <div class="row"><button class="p" id="pdf">⬇ PDF</button><button id="jpg">⬇ JPG</button></div>
+  </aside>
+</main>
+<div id="strip"></div>
+<div id="msg"></div>
 
-<canvas id="canvas" style="display:none"></canvas>
 <script>
-let cropper=null, currentSrc=null, finalData=null, pages=[];
-function loadFile(e){
- const f=e.target.files[0]; if(!f) return;
- const r=new FileReader();
- r.onload=ev=>{
-  currentSrc=ev.target.result;
-  const img=document.getElementById('cropImg');
-  img.src=currentSrc; img.style.display='block';
-  document.getElementById('editor').style.display='block';
-  if(cropper) cropper.destroy();
-  cropper=new Cropper(img,{viewMode:1,autoCropArea:0.9});
-  document.getElementById('hint').innerText='4 kono ko khinch ke Crop set karo, fir Crop Confirm dabao';
- };
- r.readAsDataURL(f);
+const MAX=1800;
+let pages=[],cur=-1,cropOn=false,box=null;
+const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
+
+function toast(t){const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(m.t);m.t=setTimeout(()=>m.style.display='none',2000)}
+
+function loadFiles(files){
+  [...files].forEach(f=>{
+    const img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1,MAX/Math.max(img.width,img.height));
+      const b=document.createElement('canvas');
+      b.width=Math.round(img.width*k);b.height=Math.round(img.height*k);
+      b.getContext('2d').drawImage(img,0,0,b.width,b.height);
+      pages.push({base:b,f:'magic',br:0,ct:0});
+      select(pages.length-1);URL.revokeObjectURL(img.src);
+    };
+    img.src=URL.createObjectURL(f);
+  });
 }
-document.getElementById('cam').addEventListener('change',loadFile);
-document.getElementById('gal').addEventListener('change',loadFile);
-function doCrop(){
- if(!cropper) return;
- const c=cropper.getCroppedCanvas({maxWidth:1200});
- finalData=c.toDataURL('image/jpeg',0.9);
- showPreview(); document.getElementById('hint').innerText='Crop ho gaya! Ab AI Enhance ya Filter lagao';
+$('cam').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
+$('up').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
+
+// Image processing
+function process(base,p,out){
+  out.width=base.width;out.height=base.height;
+  const c=out.getContext('2d');c.drawImage(base,0,0);
+  if(p.f==='orig'&&!p.br&&!p.ct)return;
+  const im=c.getImageData(0,0,out.width,out.height),d=im.data,n=d.length;
+  let lo=[255,255,255],hi=[0,0,0];
+  if(p.f==='magic'){ // auto-levels using 2% / 98% percentiles
+    const H=[new Uint32Array(256),new Uint32Array(256),new Uint32Array(256)];
+    for(let i=0;i<n;i+=16)for(let k=0;k<3;k++)H[k][d[i+k]]++;
+    const tot=n/16;
+    for(let k=0;k<3;k++){let s=0;for(let v=0;v<256;v++){s+=H[k][v];if(s>tot*.02){lo[k]=v;break}}
+      s=0;for(let v=255;v>=0;v--){s+=H[k][v];if(s>tot*.02){hi[k]=v;break}}
+      if(hi[k]-lo[k]<30){lo[k]=0;hi[k]=255}}
+  }
+  const cf=(259*(p.ct+255))/(255*(259-p.ct));
+  for(let i=0;i<n;i+=4){
+    let r=d[i],g=d[i+1],b=d[i+2];
+    if(p.f==='magic'){
+      r=(r-lo[0])*255/(hi[0]-lo[0]);g=(g-lo[1])*255/(hi[1]-lo[1]);b=(b-lo[2])*255/(hi[2]-lo[2]);
+    }else if(p.f==='gray'||p.f==='bw'){
+      r=g=b=.299*r+.587*g+.114*b;
+    }
+    r+=p.br;g+=p.br;b+=p.br;
+    r=cf*(r-128)+128;g=cf*(g-128)+128;b=cf*(b-128)+128;
+    if(p.f==='bw'){const v=r>150?255:0;r=g=b=v}
+    d[i]=r;d[i+1]=g;d[i+2]=b;
+  }
+  c.putImageData(im,0,0);
 }
-function rotate(){ if(!cropper) return; cropper.rotate(90); }
-function aiEnhance(){
- document.getElementById('br').value=115; document.getElementById('ct').value=150; document.getElementById('gs').value=20;
- applyFilter(); alert('AI Enhance ho gaya! Photo ab scanner jaisa saaf lagega');
+
+function render(){
+  const p=pages[cur];if(!p)return;
+  process(p.base,p,cv);
+  const t=$('strip').children[cur];
+  if(t){const k=84/cv.height;t.width=Math.round(cv.width*k);t.height=84;t.getContext('2d').drawImage(cv,0,0,t.width,t.height)}
 }
-function setFilter(t){
- if(t=='bw'){ document.getElementById('gs').value=100; document.getElementById('ct').value=140; }
- if(t=='scan'){ document.getElementById('gs').value=100; document.getElementById('br').value=120; document.getElementById('ct').value=170; }
- if(t=='color'){ document.getElementById('gs').value=0; document.getElementById('br').value=100; document.getElementById('ct').value=100; }
- applyFilter();
+function buildStrip(){
+  const s=$('strip');s.innerHTML='';
+  pages.forEach((p,i)=>{const t=document.createElement('canvas');t.onclick=()=>select(i);t.className=i===cur?'sel':'';s.appendChild(t);const k=84/p.base.height;t.width=Math.round(p.base.width*k);t.height=84;
+    const tmp=document.createElement('canvas');process(p.base,p,tmp);t.getContext('2d').drawImage(tmp,0,0,t.width,t.height)});
 }
-function applyFilter(){
- if(!finalData) return;
- const img=new Image(); img.onload=()=>{
-  const cv=document.getElementById('canvas'); const ctx=cv.getContext('2d');
-  cv.width=img.width; cv.height=img.height;
-  const b=document.getElementById('br').value, ct=document.getElementById('ct').value, g=document.getElementById('gs').value;
-  ctx.filter=`brightness(${b}%) contrast(${ct}%) grayscale(${g}%)`;
-  ctx.drawImage(img,0,0);
-  finalData=cv.toDataURL('image/jpeg',0.9); showPreview();
- };
- img.src=finalData;
+function select(i){
+  cur=i;endCrop();
+  $('empty').style.display=pages.length?'none':'block';
+  $('wrap').style.display=pages.length?'inline-block':'none';
+  if(!pages.length){buildStrip();return}
+  const p=pages[i];
+  $('br').value=p.br;$('ct').value=p.ct;$('bv').textContent=p.br;$('cvv').textContent=p.ct;
+  document.querySelectorAll('#filters button').forEach(b=>b.classList.toggle('on',b.dataset.f===p.f));
+  buildStrip();render();
 }
-function showPreview(){ const p=document.getElementById('preview'); p.src=finalData; p.style.display='block'; }
-function addPage(){
- if(!finalData) return alert('Pehle Crop Confirm karo');
- pages.push(finalData);
- document.getElementById('pages').innerHTML=pages.map(p=>`<img class="thumb" src="${p}">`).join('')+`<p>${pages.length} Page add ho gaye</p>`;
- alert('Page Add ho gaya! Aur photo lo ya PDF banao');
+
+// Controls
+document.querySelectorAll('#filters button').forEach(b=>b.onclick=()=>{if(cur<0)return;pages[cur].f=b.dataset.f;select(cur)});
+$('br').oninput=e=>{if(cur<0)return;pages[cur].br=+e.target.value;$('bv').textContent=e.target.value;render()};
+$('ct').oninput=e=>{if(cur<0)return;pages[cur].ct=+e.target.value;$('cvv').textContent=e.target.value;render()};
+
+function rotate(deg){
+  if(cur<0)return;const p=pages[cur],o=p.base,n=document.createElement('canvas');
+  n.width=o.height;n.height=o.width;const c=n.getContext('2d');
+  c.translate(n.width/2,n.height/2);c.rotate(deg*Math.PI/180);c.drawImage(o,-o.width/2,-o.height/2);
+  p.base=n;select(cur);
 }
-function downloadJPG(){ if(!finalData) return alert('Pehle photo lo'); const a=document.createElement('a'); a.href=finalData; a.download='sovienter.jpg'; a.click(); }
-function downloadPDF(){
- const list=pages.length?pages:(finalData?[finalData]:[]);
- if(!list.length) return alert('Pehle photo lo');
- const {jsPDF}=window.jspdf; const doc=new jsPDF();
- list.forEach((src,i)=>{ if(i>0) doc.addPage(); doc.addImage(src,'JPEG',10,10,190,277); });
- doc.save('sovienter.pdf');
-}
-async function shareWA(){
- if(!finalData) return; try{ const r=await fetch(finalData); const b=await r.blob(); const f=new File([b],'sovienter.jpg',{type:'image/jpeg'}); if(navigator.share&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:'Sovienter Scan'}); else downloadJPG(); }catch(e){ downloadJPG(); }
-}
+$('rl').onclick=()=>rotate(-90);$('rr').onclick=()=>rotate(90);
+$('del').onclick=()=>{if(cur<0)return;pages.splice(cur,1);select(Math.min(cur,pages.length-1));toast('Page delete ho gaya')};
+
+// Crop
+function endCrop(){cropOn=false;$('crop').style.display='none';$('apply').style.display='none'}
+$('cropBtn').onclick=()=>{
+  if(cur<0)return;
+  if(cropOn){endCrop();return}
+  cropOn=true;const w=cv.clientWidth,h=cv.clientHeight;
+  box={x:w*.06,y:h*.06,w:w*.88,h:h*.88};drawBox();
+  $('crop').style.display='block';$('apply').style.display='inline-flex';
+};
+function drawBox(){const s=$('crop').style;s.left=box.x+'px';s.top=box.y+'px';s.width=box.w+'px';s.height=box.h+'px'}
+let drag=null;
+document.querySelectorAll('.h').forEach(h=>{
+  h.addEventListener('pointerdown',e=>{e.preventDefault();h.setPointerCapture(e.pointerId);drag={c:h.dataset.c,sx:e.clientX,sy:e.clientY,b:{...box}}});
+  h.addEventListener('pointermove',e=>{
+    if(!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy,b=drag.b,W=cv.clientWidth,H=cv.clientHeight;
+    let x1=b.x,y1=b.y,x2=b.x+b.w,y2=b.y+b.h;
+    if(drag.c[1]==='l')x1=Math.max(0,Math.min(x2-40,x1+dx));else x2=Math.min(W,Math.max(x1+40,x2+dx));
+    if(drag.c[0]==='t')y1=Math.max(0,Math.min(y2-40,y1+dy));else y2=Math.min(H,Math.max(y1+40,y2+dy));
+    box={x:x1,y:y1,w:x2-x1,h:y2-y1};drawBox();
+  });
+  h.addEventListener('pointerup',()=>drag=null);
+});
+$('apply').onclick=()=>{
+  const p=pages[cur],k=p.base.width/cv.clientWidth;
+  const n=document.createElement('canvas');n.width=Math.round(box.w*k);n.height=Math.round(box.h*k);
+  n.getContext('2d').drawImage(p.base,box.x*k,box.y*k,box.w*k,box.h*k,0,0,n.width,n.height);
+  p.base=n;select(cur);toast('Crop ho gaya');
+};
+
+// Export
+function finalCanvas(p){const c=document.createElement('canvas');process(p.base,p,c);return c}
+$('jpg').onclick=()=>{
+  if(cur<0)return;
+  finalCanvas(pages[cur]).toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sovienter-scan-'+(cur+1)+'.jpg';a.click();toast('JPG save ho rahi hai')},'image/jpeg',.92);
+};
+$('pdf').onclick=()=>{
+  if(!pages.length){toast('Pehle koi page scan karo');return}
+  if(!window.jspdf){toast('PDF library load nahi hui. Internet check karo.');return}
+  const {jsPDF}=window.jspdf;let doc=null;
+  pages.forEach(p=>{
+    const c=finalCanvas(p),w=c.width,h=c.height,o=w>h?'l':'p';
+    const pw=o==='p'?210:297,ph=o==='p'?297:210,k=Math.min(pw/w,ph/h),iw=w*k,ih=h*k;
+    if(!doc)doc=new jsPDF({orientation:o,unit:'mm',format:'a4'});else doc.addPage('a4',o);
+    doc.addImage(c.toDataURL('image/jpeg',.9),'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih);
+  });
+  doc.save('sovienter-scan.pdf');toast('PDF ban gayi');
+};
 </script>
 </body>
 </html>
