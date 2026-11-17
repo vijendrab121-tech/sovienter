@@ -3,74 +3,131 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOVIENTER - Document Scanner</title>
+<title>SOVIENTER - AI Document Scanner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-body{background:#000;color:#fff;font-family:Arial;text-align:center;margin:0;padding:20px}
-h1{font-size:42px;margin:10px 0} h1 span{color:#00e676}
-p{color:#aaa}
-.btn{background:#00c9a7;color:#000;border:0;padding:15px 25px;font-size:19px;font-weight:bold;border-radius:10px;margin:10px;cursor:pointer;display:inline-block}
-.box{background:#111;padding:20px;border-radius:15px;margin-top:20px}
-img{max-width:100%;border-radius:10px;margin-top:10px}
-input[type=file]{display:none}
+*{box-sizing:border-box} body{background:#000;color:#fff;font-family:Arial;text-align:center;margin:0;padding:15px}
+h1{font-size:40px;margin:5px} h1 span{color:#00e676} p{color:#aaa;margin:5px}
+.btn{background:#00c9a7;color:#000;border:0;padding:13px 18px;font-size:17px;font-weight:bold;border-radius:10px;margin:6px;cursor:pointer}
+.btn2{background:#fff}.btn3{background:#25D366}.btn4{background:#ffcc00}
+.box{background:#111;padding:15px;border-radius:15px;margin-top:10px}
+img{max-width:100%;border-radius:10px} input[type=file]{display:none}
+input[type=range]{width:90%} .card{background:#1a1a1a;padding:10px;border-radius:10px;margin:10px 0}
+label{font-size:14px;color:#ccc}
+#cropImg{max-height:380px}
+.thumb{width:70px;height:70px;object-fit:cover;border-radius:8px;border:2px solid #00e676;margin:3px}
 </style>
 </head>
 <body>
 <h1>SOVI<span>ENTER</span></h1>
-<p>Document Scanner - Scan | Edit | PDF | JPG</p>
-<p>100% Free | No Watermark | No Sign Up</p>
+<p>AI Document Scanner - Pro Edition</p>
+<p>✨ Auto Crop | AI Enhance | Multi-Page PDF | 100% Free</p>
+
 <div class="box">
-  <label for="camInput" class="btn">📷 Camera Kholo</label>
-  <label for="galInput" class="btn" style="background:#fff">🖼️ Gallery Se Lo</label>
-  <input type="file" id="camInput" accept="image/*" capture="environment">
-  <input type="file" id="galInput" accept="image/*">
-  <br><br>
-  <p>✅ PDF Banao | JPG Banao | WhatsApp Pe Bhejo</p>
-  <img id="preview" style="display:none">
-  <div id="actions" style="display:none">
-    <button class="btn" onclick="downloadJPG()">⬇️ JPG Download</button>
-    <button class="btn" onclick="downloadPDF()">📄 PDF Banao</button>
-    <button class="btn" style="background:#25D366" onclick="shareWA()">WhatsApp Pe Bhejo</button>
-  </div>
+<label for="cam" class="btn">📷 Camera</label>
+<label for="gal" class="btn btn2">🖼️ Gallery</label>
+<input type="file" id="cam" accept="image/*" capture="environment">
+<input type="file" id="gal" accept="image/*" multiple>
+<div id="pages"></div>
+<p id="hint" style="color:#00e676">Photo lo, fir neeche Crop karo</p>
+<div><img id="cropImg" style="display:none"></div>
+
+<div id="editor" style="display:none">
+<div class="card">
+<button class="btn" onclick="doCrop()">✂️ Crop Confirm Karo</button>
+<button class="btn btn4" onclick="rotate()">🔄 Rotate</button>
+<button class="btn btn4" onclick="aiEnhance()">🤖 AI Auto Enhance</button>
 </div>
+<div class="card">
+<label>Brightness</label><br><input type="range" id="br" min="50" max="150" value="100" oninput="applyFilter()"><br>
+<label>Contrast</label><br><input type="range" id="ct" min="50" max="200" value="100" oninput="applyFilter()"><br>
+<label>Grayscale / B&W</label><br><input type="range" id="gs" min="0" max="100" value="0" oninput="applyFilter()">
+</div>
+<div class="card">
+<button class="btn" onclick="setFilter('color')">🎨 Color</button>
+<button class="btn" onclick="setFilter('bw')">⚫ Black & White</button>
+<button class="btn" onclick="setFilter('scan')">📄 Scanner Mode</button>
+</div>
+<div><img id="preview" style="display:none"></div>
+<div>
+<button class="btn" onclick="addPage()">➕ Ye Page Add Karo</button>
+<button class="btn btn2" onclick="downloadJPG()">⬇️ JPG</button>
+</div>
+<div>
+<button class="btn" onclick="downloadPDF()">📄 Sabka PDF Banao</button>
+<button class="btn btn3" onclick="shareWA()">WhatsApp Pe Bhejo</button>
+</div>
+</div>
+</div>
+<p style="font-size:12px">Sovienter - Made for India | No Watermark | Private - Photo sirf aapke phone me rehta hai</p>
+
+<canvas id="canvas" style="display:none"></canvas>
 <script>
-let currentImg=null;
-function handleFile(e){
-  const file=e.target.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=function(ev){
-    currentImg=ev.target.result;
-    const p=document.getElementById('preview');
-    p.src=currentImg; p.style.display='block';
-    document.getElementById('actions').style.display='block';
-  };
-  reader.readAsDataURL(file);
+let cropper=null, currentSrc=null, finalData=null, pages=[];
+function loadFile(e){
+ const f=e.target.files[0]; if(!f) return;
+ const r=new FileReader();
+ r.onload=ev=>{
+  currentSrc=ev.target.result;
+  const img=document.getElementById('cropImg');
+  img.src=currentSrc; img.style.display='block';
+  document.getElementById('editor').style.display='block';
+  if(cropper) cropper.destroy();
+  cropper=new Cropper(img,{viewMode:1,autoCropArea:0.9});
+  document.getElementById('hint').innerText='4 kono ko khinch ke Crop set karo, fir Crop Confirm dabao';
+ };
+ r.readAsDataURL(f);
 }
-document.getElementById('camInput').addEventListener('change',handleFile);
-document.getElementById('galInput').addEventListener('change',handleFile);
-function downloadJPG(){
-  if(!currentImg) return;
-  const a=document.createElement('a');
-  a.href=currentImg; a.download='sovienter-scan.jpg'; a.click();
+document.getElementById('cam').addEventListener('change',loadFile);
+document.getElementById('gal').addEventListener('change',loadFile);
+function doCrop(){
+ if(!cropper) return;
+ const c=cropper.getCroppedCanvas({maxWidth:1200});
+ finalData=c.toDataURL('image/jpeg',0.9);
+ showPreview(); document.getElementById('hint').innerText='Crop ho gaya! Ab AI Enhance ya Filter lagao';
 }
+function rotate(){ if(!cropper) return; cropper.rotate(90); }
+function aiEnhance(){
+ document.getElementById('br').value=115; document.getElementById('ct').value=150; document.getElementById('gs').value=20;
+ applyFilter(); alert('AI Enhance ho gaya! Photo ab scanner jaisa saaf lagega');
+}
+function setFilter(t){
+ if(t=='bw'){ document.getElementById('gs').value=100; document.getElementById('ct').value=140; }
+ if(t=='scan'){ document.getElementById('gs').value=100; document.getElementById('br').value=120; document.getElementById('ct').value=170; }
+ if(t=='color'){ document.getElementById('gs').value=0; document.getElementById('br').value=100; document.getElementById('ct').value=100; }
+ applyFilter();
+}
+function applyFilter(){
+ if(!finalData) return;
+ const img=new Image(); img.onload=()=>{
+  const cv=document.getElementById('canvas'); const ctx=cv.getContext('2d');
+  cv.width=img.width; cv.height=img.height;
+  const b=document.getElementById('br').value, ct=document.getElementById('ct').value, g=document.getElementById('gs').value;
+  ctx.filter=`brightness(${b}%) contrast(${ct}%) grayscale(${g}%)`;
+  ctx.drawImage(img,0,0);
+  finalData=cv.toDataURL('image/jpeg',0.9); showPreview();
+ };
+ img.src=finalData;
+}
+function showPreview(){ const p=document.getElementById('preview'); p.src=finalData; p.style.display='block'; }
+function addPage(){
+ if(!finalData) return alert('Pehle Crop Confirm karo');
+ pages.push(finalData);
+ document.getElementById('pages').innerHTML=pages.map(p=>`<img class="thumb" src="${p}">`).join('')+`<p>${pages.length} Page add ho gaye</p>`;
+ alert('Page Add ho gaya! Aur photo lo ya PDF banao');
+}
+function downloadJPG(){ if(!finalData) return alert('Pehle photo lo'); const a=document.createElement('a'); a.href=finalData; a.download='sovienter.jpg'; a.click(); }
 function downloadPDF(){
-  if(!currentImg) return;
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF();
-  doc.addImage(currentImg,'JPEG',10,10,190,260);
-  doc.save('sovienter-scan.pdf');
+ const list=pages.length?pages:(finalData?[finalData]:[]);
+ if(!list.length) return alert('Pehle photo lo');
+ const {jsPDF}=window.jspdf; const doc=new jsPDF();
+ list.forEach((src,i)=>{ if(i>0) doc.addPage(); doc.addImage(src,'JPEG',10,10,190,277); });
+ doc.save('sovienter.pdf');
 }
 async function shareWA(){
-  if(!currentImg) return;
-  try{
-    const res=await fetch(currentImg);
-    const blob=await res.blob();
-    const file=new File([blob],'sovienter.jpg',{type:'image/jpeg'});
-    if(navigator.share && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:'Sovienter Scan'});
-    }else{ downloadJPG(); window.open('https://wa.me/?text=Sovienter%20se%20scan%20kiya','_blank'); }
-  }catch(e){ downloadJPG(); }
+ if(!finalData) return; try{ const r=await fetch(finalData); const b=await r.blob(); const f=new File([b],'sovienter.jpg',{type:'image/jpeg'}); if(navigator.share&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:'Sovienter Scan'}); else downloadJPG(); }catch(e){ downloadJPG(); }
 }
 </script>
 </body>
