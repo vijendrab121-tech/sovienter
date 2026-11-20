@@ -4,219 +4,307 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sovienter Scan</title>
+<script>
+// --- LOCK FIX: http ko hamesha https pe bhejo ---
+if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  location.replace('https://' + location.host + location.pathname + location.search);
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--bg:#eef2f5;--panel:#fff;--ink:#14212b;--mut:#5d6b78;--line:#d5dde4;--acc:#2447f5;--hl:#ffd84d}
 @media(prefers-color-scheme:dark){:root{--bg:#0f161c;--panel:#18222b;--ink:#eaf0f5;--mut:#92a1af;--line:#2a3743}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-h1{font-size:18px;margin:0;letter-spacing:.2px}
-h1 span{color:var(--acc)}
-button,label.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 13px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:18px;margin:0}h1 span{color:var(--acc)}
+button,label.btn,select{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 button:hover,label.btn:hover{border-color:var(--acc)}
 button:focus-visible,label.btn:focus-within{outline:2px solid var(--acc);outline-offset:2px}
-.p{background:var(--acc);color:#fff;border-color:var(--acc)}
-.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.p,.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 input[type=file]{position:absolute;opacity:0;width:0;height:0}
-main{display:grid;grid-template-columns:1fr 280px;gap:14px;padding:14px;max-width:1100px;margin:auto}
+main{display:grid;grid-template-columns:1fr 290px;gap:14px;padding:14px;max-width:1100px;margin:auto}
 @media(max-width:800px){main{grid-template-columns:1fr}}
 .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:300px;display:flex;align-items:center;justify-content:center}
 .wrap{position:relative;display:inline-block;max-width:100%;touch-action:none}
 canvas#cv{max-width:100%;max-height:68vh;display:block}
-#crop{position:absolute;border:2px solid var(--hl);box-shadow:0 0 0 9999px rgba(0,0,0,.45);display:none}
-.h{position:absolute;width:26px;height:26px;background:var(--hl);border-radius:50%;margin:-13px;touch-action:none}
+#ov{position:absolute;inset:0;display:none}
+#ov svg{position:absolute;inset:0;width:100%;height:100%}
+.h{position:absolute;width:30px;height:30px;margin:-15px;background:var(--hl);border:3px solid #000;border-radius:50%;touch-action:none}
 aside{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px}
-.row{display:flex;flex-wrap:wrap;gap:6px}
-.row button{flex:1 1 auto;justify-content:center}
+.row{display:flex;flex-wrap:wrap;gap:6px}.row>*{flex:1 1 auto;justify-content:center}
 label.s{display:flex;justify-content:space-between;color:var(--mut);font-size:13px}
 input[type=range]{width:100%;accent-color:var(--acc)}
+.chk{display:flex;gap:8px;align-items:center;color:var(--mut);font-size:14px}
 #strip{display:flex;gap:8px;overflow-x:auto;padding:10px 14px;max-width:1100px;margin:auto}
 #strip canvas{height:84px;border:2px solid var(--line);border-radius:6px;cursor:pointer;flex:none;background:#fff}
 #strip canvas.sel{border-color:var(--acc)}
-.empty{text-align:center;color:var(--mut);padding:30px}
-.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
-#msg{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;display:none;z-index:9}
+.empty{text-align:center;color:var(--mut);padding:30px}.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+#msg{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;display:none;z-index:99;max-width:90%}
+#ocr{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:20;padding:14px;overflow:auto}
+#ocr .box{background:var(--panel);max-width:700px;margin:auto;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+#ocr textarea{width:100%;height:50vh;font:15px/1.5 system-ui;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+progress{width:100%;accent-color:var(--acc)}
 </style>
 </head>
 <body>
 <header>
   <h1><span>Sovienter</span> Scan</h1>
-  <div class="row">
+  <div class="row" style="flex:0 0 auto">
     <label class="btn p">📷 Scan<input id="cam" type="file" accept="image/*" capture="environment"></label>
     <label class="btn">🖼 Upload<input id="up" type="file" accept="image/*" multiple></label>
   </div>
 </header>
 
 <main>
-  <div class="stage" id="stage">
-    <div class="empty" id="empty"><b>Koi page nahi hai</b>Scan dabao ya photo upload karo.</div>
-    <div class="wrap" id="wrap" style="display:none">
-      <canvas id="cv"></canvas>
-      <div id="crop"><div class="h" data-c="tl" style="left:0;top:0"></div><div class="h" data-c="tr" style="right:0;top:0;margin:-13px -13px 0 0"></div><div class="h" data-c="bl" style="left:0;bottom:0;margin:0 0 -13px -13px"></div><div class="h" data-c="br" style="right:0;bottom:0;margin:0 -13px -13px 0"></div></div>
-    </div>
+  <div class="stage">
+    <div class="empty" id="empty"><b>Koi page nahi hai</b>Scan dabao ya photo upload karo. Edges apne aap detect hongi.</div>
+    <div class="wrap" id="wrap" style="display:none"><canvas id="cv"></canvas><div id="ov"></div></div>
   </div>
 
   <aside>
+    <label class="chk"><input type="checkbox" id="auto" checked> Auto-detect edges (AI)</label>
     <div>
       <label class="s">Filter</label>
       <div class="row" id="filters">
-        <button data-f="orig">Original</button>
-        <button data-f="magic" class="on">Magic</button>
-        <button data-f="gray">Gray</button>
-        <button data-f="bw">B&amp;W</button>
+        <button data-f="orig">Original</button><button data-f="magic" class="on">Magic ✨</button><button data-f="super">Super Magic ⚡</button>
+        <button data-f="gray">Gray</button><button data-f="bw">B&amp;W</button>
       </div>
     </div>
     <div><label class="s">Brightness <span id="bv">0</span></label><input type="range" id="br" min="-80" max="80" value="0"></div>
     <div><label class="s">Contrast <span id="cvv">0</span></label><input type="range" id="ct" min="-60" max="80" value="0"></div>
     <div class="row">
       <button id="rl">⟲ Left</button><button id="rr">⟳ Right</button>
-      <button id="cropBtn">✂ Crop</button><button id="apply" style="display:none" class="p">✔ Apply</button>
+      <button id="cropBtn">✂ Crop</button><button id="apply" class="p" style="display:none">✔ Apply</button>
+      <button id="reset">↺ Reset</button>
     </div>
-    <div class="row"><button id="del">🗑 Delete page</button></div>
+    <div class="row">
+      <select id="lang"><option value="eng">English</option><option value="hin+eng">Hindi + English</option></select>
+      <button id="ocrBtn" class="p">🧠 Text nikalo (OCR)</button>
+    </div>
+    <div class="row"><button id="del">🗑 Delete</button></div>
     <div class="row"><button class="p" id="pdf">⬇ PDF</button><button id="jpg">⬇ JPG</button></div>
+    <div class="row"><button id="shareBtn" style="background:#25D366;color:#fff;border-color:#25D366">💬 WhatsApp Share</button></div>
   </aside>
 </main>
 <div id="strip"></div>
 <div id="msg"></div>
 
+<div id="ocr"><div class="box">
+  <b>Extracted text (edit kar sakte ho)</b>
+  <progress id="prog" value="0" max="1"></progress><small id="pt">Taiyaar...</small>
+  <textarea id="txt" spellcheck="false"></textarea>
+  <div class="row"><button id="cp">Copy</button><button id="dtxt">⬇ .txt</button><button id="ddoc">⬇ Word (.doc)</button><button id="cls">Close</button></div>
+</div></div>
+
 <script>
-const MAX=1800;
-let pages=[],cur=-1,cropOn=false,box=null;
 const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
+let pages=[],cur=-1,q=null,editing=false;
+const MAX=2200,PREV=1000;
+const toast=t=>{const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(m.t);m.t=setTimeout(()=>m.style.display='none',2200)};
+const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const scaled=(src,max)=>{const k=Math.min(1,max/Math.max(src.width,src.height));if(k===1)return src;const c=mk(Math.round(src.width*k),Math.round(src.height*k));c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c};
 
-function toast(t){const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(m.t);m.t=setTimeout(()=>m.style.display='none',2000)}
-
-function loadFiles(files){
-  [...files].forEach(f=>{
-    const img=new Image();
-    img.onload=()=>{
-      const k=Math.min(1,MAX/Math.max(img.width,img.height));
-      const b=document.createElement('canvas');
-      b.width=Math.round(img.width*k);b.height=Math.round(img.height*k);
-      b.getContext('2d').drawImage(img,0,0,b.width,b.height);
-      pages.push({base:b,f:'magic',br:0,ct:0});
-      select(pages.length-1);URL.revokeObjectURL(img.src);
-    };
-    img.src=URL.createObjectURL(f);
-  });
-}
-$('cam').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
-$('up').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
-
-// Image processing
-function process(base,p,out){
-  out.width=base.width;out.height=base.height;
-  const c=out.getContext('2d');c.drawImage(base,0,0);
+/* ---------- Image processing: adaptive (shadow-proof) filters ---------- */
+function process(src,p,out){
+  const w=src.width,h=src.height;out.width=w;out.height=h;
+  const c=out.getContext('2d');c.drawImage(src,0,0);
   if(p.f==='orig'&&!p.br&&!p.ct)return;
-  const im=c.getImageData(0,0,out.width,out.height),d=im.data,n=d.length;
-  let lo=[255,255,255],hi=[0,0,0];
-  if(p.f==='magic'){ // auto-levels using 2% / 98% percentiles
-    const H=[new Uint32Array(256),new Uint32Array(256),new Uint32Array(256)];
-    for(let i=0;i<n;i+=16)for(let k=0;k<3;k++)H[k][d[i+k]]++;
-    const tot=n/16;
-    for(let k=0;k<3;k++){let s=0;for(let v=0;v<256;v++){s+=H[k][v];if(s>tot*.02){lo[k]=v;break}}
-      s=0;for(let v=255;v>=0;v--){s+=H[k][v];if(s>tot*.02){hi[k]=v;break}}
-      if(hi[k]-lo[k]<30){lo[k]=0;hi[k]=255}}
+  const im=c.getImageData(0,0,w,h),d=im.data,N=w*h,cf=(259*(p.ct+255))/(255*(259-p.ct));
+  let lm=null;
+  if(p.f==='magic'||p.f==='super'||p.f==='bw'){
+    const W=w+1,I=new Uint32Array(W*(h+1));
+    for(let y=0;y<h;y++){let s=0;for(let x=0;x<w;x++){const i=(y*w+x)*4;s+=(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;I[(y+1)*W+x+1]=I[y*W+x+1]+s}}
+    const r=Math.max(7,Math.round(Math.min(w,h)/14));lm=new Float32Array(N);
+    for(let y=0;y<h;y++){const y0=Math.max(0,y-r),y1=Math.min(h,y+r+1);
+      for(let x=0;x<w;x++){const x0=Math.max(0,x-r),x1=Math.min(w,x+r+1);
+        lm[y*w+x]=(I[y1*W+x1]-I[y0*W+x1]-I[y1*W+x0]+I[y0*W+x0])/((x1-x0)*(y1-y0))}}
   }
-  const cf=(259*(p.ct+255))/(255*(259-p.ct));
-  for(let i=0;i<n;i+=4){
-    let r=d[i],g=d[i+1],b=d[i+2];
-    if(p.f==='magic'){
-      r=(r-lo[0])*255/(hi[0]-lo[0]);g=(g-lo[1])*255/(hi[1]-lo[1]);b=(b-lo[2])*255/(hi[2]-lo[2]);
-    }else if(p.f==='gray'||p.f==='bw'){
-      r=g=b=.299*r+.587*g+.114*b;
-    }
+  for(let j=0,i=0;j<N;j++,i+=4){
+    let r=d[i],g=d[i+1],b=d[i+2];const y=(r*77+g*150+b*29)>>8;
+    if(p.f==='bw'){const v=(y+p.br)<lm[j]*(.88-p.ct/600)?0:255;d[i]=d[i+1]=d[i+2]=v;continue}
+    if(p.f==='magic'){const k=255/Math.max(40,lm[j]*1.1+6);r*=k;g*=k;b*=k;r=(r-128)*1.2+128;g=(g-128)*1.2+128;b=(b-128)*1.2+128}
+    else if(p.f==='super'){const k=255/Math.max(30,lm[j]*1.15+4);r*=k;g*=k;b*=k;r=(r-128)*1.45+128;g=(g-128)*1.45+128;b=(b-128)*1.45+128; const avg=(r+g+b)/3; if(avg>200){r=Math.min(255,r*1.05);g=Math.min(255,g*1.05);b=Math.min(255,b*1.05)}}
+    else if(p.f==='gray'){r=g=b=y}
     r+=p.br;g+=p.br;b+=p.br;
-    r=cf*(r-128)+128;g=cf*(g-128)+128;b=cf*(b-128)+128;
-    if(p.f==='bw'){const v=r>150?255:0;r=g=b=v}
-    d[i]=r;d[i+1]=g;d[i+2]=b;
+    d[i]=cf*(r-128)+128;d[i+1]=cf*(g-128)+128;d[i+2]=cf*(b-128)+128;
   }
   c.putImageData(im,0,0);
 }
 
+/* ---------- AI-style auto edge detection ---------- */
+function detect(src){
+  const t=scaled(src,300),w=t.width,h=t.height,N=w*h,d=t.getContext('2d').getImageData(0,0,w,h).data,g=new Uint8Array(N),H=new Uint32Array(256);
+  for(let j=0;j<N;j++){g[j]=(d[j*4]*77+d[j*4+1]*150+d[j*4+2]*29)>>8;H[g[j]]++}
+  let sum=0;for(let i=0;i<256;i++)sum+=i*H[i];
+  let wb=0,sb=0,best=0,th=128;
+  for(let i=0;i<256;i++){wb+=H[i];if(!wb)continue;const wf=N-wb;if(!wf)break;sb+=i*H[i];const mb=sb/wb,mf=(sum-sb)/wf,v=wb*wf*(mb-mf)*(mb-mf);if(v>best){best=v;th=i}}
+  const bin=new Uint8Array(N);let edge=0,per=0;
+  for(let j=0;j<N;j++)bin[j]=g[j]>th?1:0;
+  for(let x=0;x<w;x++){edge+=bin[x]+bin[(h-1)*w+x];per+=2}
+  for(let y=0;y<h;y++){edge+=bin[y*w]+bin[y*w+w-1];per+=2}
+  if(edge/per>.5)for(let j=0;j<N;j++)bin[j]^=1;
+  const vis=new Uint8Array(N),st=new Int32Array(N);let B=null;
+  for(let s=0;s<N;s++){
+    if(!bin[s]||vis[s])continue;
+    let sp=0,cnt=0,mnS=1e9,mxS=-1e9,mnD=1e9,mxD=-1e9,a,b2,c2,e;
+    st[sp++]=s;vis[s]=1;
+    while(sp){const j=st[--sp],x=j%w,y=(j/w)|0;cnt++;const S=x+y,D=x-y;
+      if(S<mnS){mnS=S;a=[x,y]}if(S>mxS){mxS=S;b2=[x,y]}if(D>mxD){mxD=D;c2=[x,y]}if(D<mnD){mnD=D;e=[x,y]}
+      if(x>0&&bin[j-1]&&!vis[j-1]){vis[j-1]=1;st[sp++]=j-1}
+      if(x<w-1&&bin[j+1]&&!vis[j+1]){vis[j+1]=1;st[sp++]=j+1}
+      if(y>0&&bin[j-w]&&!vis[j-w]){vis[j-w]=1;st[sp++]=j-w}
+      if(y<h-1&&bin[j+w]&&!vis[j+w]){vis[j+w]=1;st[sp++]=j+w}}
+    if(!B||cnt>B.cnt)B={cnt,p:[a,c2,b2,e]};
+  }
+  if(!B||B.cnt<N*.15)return null;
+  return B.p.map(([x,y])=>({x:x/w,y:y/h}));
+}
+
+/* ---------- Perspective warp ---------- */
+function warp(src,qd){
+  const P=qd.map(p=>[p.x*src.width,p.y*src.height]),dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  let W=Math.round(Math.max(dist(P[0],P[1]),dist(P[3],P[2]))),Hh=Math.round(Math.max(dist(P[0],P[3]),dist(P[1],P[2])));
+  const k=Math.min(1,MAX/Math.max(W,Hh));W=Math.max(10,Math.round(W*k));Hh=Math.max(10,Math.round(Hh*k));
+  const [[x0,y0],[x1,y1],[x2,y2],[x3,y3]]=P,sx=x0-x1+x2-x3,sy=y0-y1+y2-y3;
+  let g=0,hh=0;
+  if(sx||sy){const dx1=x1-x2,dx2=x3-x2,dy1=y1-y2,dy2=y3-y2,den=dx1*dy2-dx2*dy1;g=(sx*dy2-dx2*sy)/den;hh=(dx1*sy-sx*dy1)/den}
+  const a=x1-x0+g*x1,b=x3-x0+hh*x3,d=y1-y0+g*y1,e=y3-y0+hh*y3;
+  const sw=src.width,sh=src.height,sd=src.getContext('2d').getImageData(0,0,sw,sh).data,out=mk(W,Hh),oc=out.getContext('2d'),od=oc.createImageData(W,Hh),o=od.data;
+  for(let y=0;y<Hh;y++){const v=y/(Hh-1);
+    for(let x=0;x<W;x++){const u=x/(W-1),z=g*u+hh*v+1,X=(a*u+b*v+x0)/z,Y=(d*u+e*v+y0)/z;
+      const ix=Math.max(0,Math.min(sw-2,X|0)),iy=Math.max(0,Math.min(sh-2,Y|0)),fx=Math.max(0,Math.min(1,X-ix)),fy=Math.max(0,Math.min(1,Y-iy)),
+        i00=(iy*sw+ix)*4,i10=i00+4,i01=i00+sw*4,i11=i01+4,oi=(y*W+x)*4;
+      for(let c=0;c<4;c++)o[oi+c]=(sd[i00+c]*(1-fx)+sd[i10+c]*fx)*(1-fy)+(sd[i01+c]*(1-fx)+sd[i11+c]*fx)*fy}}
+  oc.putImageData(od,0,0);return out;
+}
+
+/* ---------- Pages ---------- */
+function addPage(img){
+  const orig=scaled(img,MAX);let c=orig;
+  if(orig!==img){}else{c=mk(img.width,img.height);c.getContext('2d').drawImage(img,0,0)}
+  const p={orig:c,base:c,f:'magic',br:0,ct:0,th:mk(60,84)};
+  if($('auto').checked){const qd=detect(c);if(qd){p.base=warp(c,qd);toast('Edges mil gayi, page seedha ho gaya')}}
+  p.prev=scaled(p.base,PREV);pages.push(p);select(pages.length-1);
+}
+function loadFiles(files){[...files].forEach(f=>{const img=new Image();img.onload=()=>{addPage(img);URL.revokeObjectURL(img.src)};img.src=URL.createObjectURL(f)})}
+$('cam').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
+$('up').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
+
+let raf=0;
 function render(){
   const p=pages[cur];if(!p)return;
-  process(p.base,p,cv);
-  const t=$('strip').children[cur];
-  if(t){const k=84/cv.height;t.width=Math.round(cv.width*k);t.height=84;t.getContext('2d').drawImage(cv,0,0,t.width,t.height)}
+  process(p.prev,p,cv);
+  const t=p.th,k=84/cv.height;t.width=Math.round(cv.width*k);t.height=84;t.getContext('2d').drawImage(cv,0,0,t.width,t.height);
 }
-function buildStrip(){
-  const s=$('strip');s.innerHTML='';
-  pages.forEach((p,i)=>{const t=document.createElement('canvas');t.onclick=()=>select(i);t.className=i===cur?'sel':'';s.appendChild(t);const k=84/p.base.height;t.width=Math.round(p.base.width*k);t.height=84;
-    const tmp=document.createElement('canvas');process(p.base,p,tmp);t.getContext('2d').drawImage(tmp,0,0,t.width,t.height)});
-}
+const rq=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(render)};
 function select(i){
   cur=i;endCrop();
-  $('empty').style.display=pages.length?'none':'block';
-  $('wrap').style.display=pages.length?'inline-block':'none';
-  if(!pages.length){buildStrip();return}
+  $('empty').style.display=pages.length?'none':'block';$('wrap').style.display=pages.length?'inline-block':'none';
+  const s=$('strip');s.innerHTML='';
+  if(!pages.length)return;
   const p=pages[i];
   $('br').value=p.br;$('ct').value=p.ct;$('bv').textContent=p.br;$('cvv').textContent=p.ct;
   document.querySelectorAll('#filters button').forEach(b=>b.classList.toggle('on',b.dataset.f===p.f));
-  buildStrip();render();
+  render();
+  pages.forEach((pg,j)=>{pg.th.onclick=()=>select(j);pg.th.className=j===cur?'sel':'';s.appendChild(pg.th)});
 }
+const setBase=(p,b)=>{p.base=b;p.prev=scaled(b,PREV);select(cur)};
 
-// Controls
 document.querySelectorAll('#filters button').forEach(b=>b.onclick=()=>{if(cur<0)return;pages[cur].f=b.dataset.f;select(cur)});
-$('br').oninput=e=>{if(cur<0)return;pages[cur].br=+e.target.value;$('bv').textContent=e.target.value;render()};
-$('ct').oninput=e=>{if(cur<0)return;pages[cur].ct=+e.target.value;$('cvv').textContent=e.target.value;render()};
-
+$('br').oninput=e=>{if(cur<0)return;pages[cur].br=+e.target.value;$('bv').textContent=e.target.value;rq()};
+$('ct').oninput=e=>{if(cur<0)return;pages[cur].ct=+e.target.value;$('cvv').textContent=e.target.value;rq()};
 function rotate(deg){
-  if(cur<0)return;const p=pages[cur],o=p.base,n=document.createElement('canvas');
-  n.width=o.height;n.height=o.width;const c=n.getContext('2d');
-  c.translate(n.width/2,n.height/2);c.rotate(deg*Math.PI/180);c.drawImage(o,-o.width/2,-o.height/2);
-  p.base=n;select(cur);
+  if(cur<0)return;const p=pages[cur],o=p.base,n=mk(o.height,o.width),c=n.getContext('2d');
+  c.translate(n.width/2,n.height/2);c.rotate(deg*Math.PI/180);c.drawImage(o,-o.width/2,-o.height/2);setBase(p,n);
 }
 $('rl').onclick=()=>rotate(-90);$('rr').onclick=()=>rotate(90);
+$('reset').onclick=()=>{if(cur<0)return;const p=pages[cur];p.br=p.ct=0;p.f='magic';setBase(p,p.orig);toast('Original wapas aa gaya')};
 $('del').onclick=()=>{if(cur<0)return;pages.splice(cur,1);select(Math.min(cur,pages.length-1));toast('Page delete ho gaya')};
 
-// Crop
-function endCrop(){cropOn=false;$('crop').style.display='none';$('apply').style.display='none'}
-$('cropBtn').onclick=()=>{
-  if(cur<0)return;
-  if(cropOn){endCrop();return}
-  cropOn=true;const w=cv.clientWidth,h=cv.clientHeight;
-  box={x:w*.06,y:h*.06,w:w*.88,h:h*.88};drawBox();
-  $('crop').style.display='block';$('apply').style.display='inline-flex';
-};
-function drawBox(){const s=$('crop').style;s.left=box.x+'px';s.top=box.y+'px';s.width=box.w+'px';s.height=box.h+'px'}
-let drag=null;
-document.querySelectorAll('.h').forEach(h=>{
-  h.addEventListener('pointerdown',e=>{e.preventDefault();h.setPointerCapture(e.pointerId);drag={c:h.dataset.c,sx:e.clientX,sy:e.clientY,b:{...box}}});
-  h.addEventListener('pointermove',e=>{
-    if(!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy,b=drag.b,W=cv.clientWidth,H=cv.clientHeight;
-    let x1=b.x,y1=b.y,x2=b.x+b.w,y2=b.y+b.h;
-    if(drag.c[1]==='l')x1=Math.max(0,Math.min(x2-40,x1+dx));else x2=Math.min(W,Math.max(x1+40,x2+dx));
-    if(drag.c[0]==='t')y1=Math.max(0,Math.min(y2-40,y1+dy));else y2=Math.min(H,Math.max(y1+40,y2+dy));
-    box={x:x1,y:y1,w:x2-x1,h:y2-y1};drawBox();
+/* ---------- Crop ---------- */
+const ov=$('ov');
+function endCrop(){editing=false;ov.style.display='none';$('apply').style.display='none'}
+function drawQ(){
+  const W=cv.clientWidth,H=cv.clientHeight;
+  ov.querySelector('polygon').setAttribute('points',q.map(p=>p.x*W+','+p.y*H).join(' '));
+  ov.querySelectorAll('.h').forEach((h,i)=>{h.style.left=q[i].x*W+'px';h.style.top=q[i].y*H+'px'});
+}
+function initOv(){
+  ov.innerHTML='<svg><polygon fill="rgba(36,71,245,.2)" stroke="#ffd84d" stroke-width="2"/></svg>'+[0,1,2,3].map(i=>'<div class="h" data-i="'+i+'"></div>').join('');
+  ov.querySelectorAll('.h').forEach(h=>{
+    let on=false;const i=+h.dataset.i;
+    h.onpointerdown=e=>{e.preventDefault();on=true;h.setPointerCapture(e.pointerId)};
+    h.onpointerup=()=>on=false;
+    h.onpointermove=e=>{if(!on)return;const r=cv.getBoundingClientRect();q[i]={x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};drawQ()};
   });
-  h.addEventListener('pointerup',()=>drag=null);
-});
-$('apply').onclick=()=>{
-  const p=pages[cur],k=p.base.width/cv.clientWidth;
-  const n=document.createElement('canvas');n.width=Math.round(box.w*k);n.height=Math.round(box.h*k);
-  n.getContext('2d').drawImage(p.base,box.x*k,box.y*k,box.w*k,box.h*k,0,0,n.width,n.height);
-  p.base=n;select(cur);toast('Crop ho gaya');
+}
+$('cropBtn').onclick=()=>{
+  if(cur<0)return;if(editing){endCrop();return}
+  const p=pages[cur];editing=true;
+  const a=detect(p.base);q=a||[{x:.06,y:.06},{x:.94,y:.06},{x:.94,y:.94},{x:.06,y:.94}];
+  initOv();ov.style.display='block';$('apply').style.display='inline-flex';drawQ();
+  toast(a?'Corners detect ho gaye, drag karke theek karo':'Corners drag karo');
 };
+$('apply').onclick=()=>{const p=pages[cur];setBase(p,warp(p.base,q));toast('Crop + straighten ho gaya')};
+addEventListener('resize',()=>{if(editing)drawQ()});
 
-// Export
-function finalCanvas(p){const c=document.createElement('canvas');process(p.base,p,c);return c}
+/* ---------- Export ---------- */
+const finalCanvas=p=>{const c=mk(1,1);process(p.base,p,c);return c};
 $('jpg').onclick=()=>{
   if(cur<0)return;
-  finalCanvas(pages[cur]).toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sovienter-scan-'+(cur+1)+'.jpg';a.click();toast('JPG save ho rahi hai')},'image/jpeg',.92);
+  finalCanvas(pages[cur]).toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sovienter-scan-'+(cur+1)+'.jpg';a.click()},'image/jpeg',.92);
 };
 $('pdf').onclick=()=>{
   if(!pages.length){toast('Pehle koi page scan karo');return}
   if(!window.jspdf){toast('PDF library load nahi hui. Internet check karo.');return}
   const {jsPDF}=window.jspdf;let doc=null;
   pages.forEach(p=>{
-    const c=finalCanvas(p),w=c.width,h=c.height,o=w>h?'l':'p';
-    const pw=o==='p'?210:297,ph=o==='p'?297:210,k=Math.min(pw/w,ph/h),iw=w*k,ih=h*k;
+    const c=finalCanvas(p),w=c.width,h=c.height,o=w>h?'l':'p',pw=o==='p'?210:297,ph=o==='p'?297:210,k=Math.min(pw/w,ph/h);
     if(!doc)doc=new jsPDF({orientation:o,unit:'mm',format:'a4'});else doc.addPage('a4',o);
-    doc.addImage(c.toDataURL('image/jpeg',.9),'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih);
+    doc.addImage(c.toDataURL('image/jpeg',.88),'JPEG',(pw-w*k)/2,(ph-h*k)/2,w*k,h*k);
   });
   doc.save('sovienter-scan.pdf');toast('PDF ban gayi');
+};
+$('shareBtn').onclick=async()=>{
+  if(!pages.length){toast('Pehle koi page scan karo');return}
+  if(!window.jspdf){toast('PDF library load nahi hui');return}
+  const {jsPDF}=window.jspdf;let doc=null;
+  pages.forEach(p=>{
+    const c=finalCanvas(p),w=c.width,h=c.height,o=w>h?'l':'p',pw=o==='p'?210:297,ph=o==='p'?297:210,k=Math.min(pw/w,ph/h);
+    if(!doc)doc=new jsPDF({orientation:o,unit:'mm',format:'a4'});else doc.addPage('a4',o);
+    doc.addImage(c.toDataURL('image/jpeg',.88),'JPEG',(pw-w*k)/2,(ph-h*k)/2,w*k,h*k);
+  });
+  const blob=doc.output('blob');
+  const file=new File([blob],'sovienter-scan.pdf',{type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Sovienter Scan',text:'Mera scanned document - Sovienter Scan se banaya'});return}catch(e){}
+  }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='sovienter-scan.pdf';a.click();
+  window.open('https://wa.me/?text='+encodeURIComponent('Mera scanned document - Sovienter Scan se banaya: https://sovienter.com'),'_blank');
+};
+
+/* ---------- OCR ---------- */
+let tessLoaded=null;
+const loadTess=()=>tessLoaded||(tessLoaded=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>{tessLoaded=null;no()};document.head.appendChild(s)}));
+$('ocrBtn').onclick=async()=>{
+  if(cur<0){toast('Pehle koi page scan karo');return}
+  $('ocr').style.display='block';$('txt').value='';$('prog').value=0;$('pt').textContent='OCR engine load ho raha hai...';
+  try{
+    await loadTess();
+    const p=pages[cur],src=mk(1,1);process(p.base,{...p,f:p.f==='bw'?'bw':'gray'},src);
+    const r=await Tesseract.recognize(src,$('lang').value,{logger:m=>{if(m.progress!==undefined){$('prog').value=m.progress;$('pt').textContent=m.status+' '+Math.round(m.progress*100)+'%'}}});
+    $('txt').value=r.data.text.trim();$('pt').textContent='Ho gaya. Text edit kar sakte ho.';
+  }catch(e){$('pt').textContent='OCR fail hua. Internet check karo aur dobara try karo.'}
+};
+$('cls').onclick=()=>$('ocr').style.display='none';
+$('cp').onclick=()=>{navigator.clipboard.writeText($('txt').value).then(()=>toast('Copy ho gaya'))};
+const save=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click()};
+$('dtxt').onclick=()=>save(new Blob([$('txt').value],{type:'text/plain;charset=utf-8'}),'sovienter-text.txt');
+$('ddoc').onclick=()=>{
+  const esc=$('txt').value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  save(new Blob(['<html><head><meta charset="utf-8"></head><body style="font-family:Calibri;font-size:12pt">'+esc+'</body></html>'],{type:'application/msword'}),'sovienter-text.doc');
 };
 </script>
 </body>
