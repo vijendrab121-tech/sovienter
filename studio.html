@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sovienter Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Playfair+Display:wght@400;700&family=Bebas+Neue&family=Pacifico&family=Noto+Sans+Devanagari:wght@400;700&family=Mukta:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#141a20;--pn:#1d262e;--ink:#eaf0f5;--mut:#93a2b0;--line:#2d3944;--acc:#2447f5}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--pn);border-bottom:1px solid var(--line)}
+header b{font-size:16px;margin-right:auto}header b span{color:#6f8bff}
+button,select,label.btn,a.btn{font:inherit;color:var(--ink);background:#26323c;border:1px solid var(--line);border-radius:8px;padding:8px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;text-decoration:none}
+button:hover,label.btn:hover{border-color:var(--acc)}
+button:focus-visible,select:focus-visible{outline:2px solid #6f8bff;outline-offset:2px}
+.p{background:var(--acc);border-color:var(--acc);color:#fff}
+#work{flex:1;min-height:0;display:grid;place-items:center;overflow:auto;padding:10px}
+.sheet{box-shadow:0 6px 30px rgba(0,0,0,.5)}
+#panel{background:var(--pn);border-top:1px solid var(--line);max-height:38vh;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:9px}
+#tabs{display:flex;background:var(--pn);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0)}
+#tabs button{flex:1;border:0;border-radius:0;background:none;justify-content:center;padding:12px 4px;color:var(--mut)}
+#tabs button.on{color:#fff;box-shadow:inset 0 2px 0 #6f8bff}
+.grid{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+b.h{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+label.s{display:flex;justify-content:space-between;color:var(--mut);font-size:13px;width:100%}
+input[type=range]{width:100%;accent-color:#6f8bff}
+input[type=color]{width:42px;height:36px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
+textarea{width:100%;height:70px;background:#10161b;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
+.hint{color:var(--mut);margin:4px 0}
+.sw{width:38px;height:38px;border-radius:8px;padding:0}
+.chip.on{background:var(--acc);border-color:var(--acc)}
+#msg{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:9px 16px;border-radius:8px;display:none;z-index:9;max-width:90%;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <b><span>Sovienter</span> Studio</b>
+  <a class="btn" href="index.html" title="Document scanner">📄 Scanner</a>
+  <select id="size" onchange="setSize(this.value)" aria-label="Canvas size">
+    <option value="1080x1080">Instagram Post</option><option value="1080x1920">Story / Status</option>
+    <option value="1280x720">YouTube Thumb</option><option value="794x1123">A4 Page</option><option value="1050x600">Visiting Card</option>
+  </select>
+  <button onclick="undo()" aria-label="Undo">↶</button><button onclick="redo()" aria-label="Redo">↷</button>
+</header>
+<div id="work"><div class="sheet"><canvas id="c"></canvas></div></div>
+<div id="panel"></div>
+<nav id="tabs">
+  <button data-t="add" class="on">➕ Add</button><button data-t="ai">✨ AI</button><button data-t="edit">🎚 Edit</button><button data-t="save">⬇ Save</button>
+</nav>
+<div id="msg" role="status"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const FONTS=['Poppins','Playfair Display','Bebas Neue','Pacifico','Noto Sans Devanagari','Mukta'];
+const GR=[['#ff3d3d','#ffb300'],['#2447f5','#7a2cff'],['#00b894','#0984e3'],['#111827','#374151'],['#ff758c','#ff7eb3'],['#f9d423','#ff4e50']];
+let W=1080,H=1080,Z=1,tab='add',lock=false,hist=[],hi=-1,tmr=0,aiPrompt='',aiStyle='';
+const cv=new fabric.Canvas('c',{preserveObjectStacking:true,backgroundColor:'#ffffff'});
+fabric.Object.prototype.set({cornerSize:20,touchCornerSize:40,transparentCorners:false,cornerColor:'#2447f5',cornerStrokeColor:'#fff',borderColor:'#2447f5',padding:4});
+const toast=(t,ms=2400)=>{const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(m.t);if(ms)m.t=setTimeout(()=>m.style.display='none',ms)};
+const hideToast=()=>$('msg').style.display='none';
+const S=()=>Math.min(W,H)/1080;
+function fit(){const b=$('work');Z=Math.max(.05,Math.min((b.clientWidth-20)/W,(b.clientHeight-20)/H));cv.setZoom(Z);cv.setDimensions({width:W*Z,height:H*Z})}
+addEventListener('resize',fit);
+FONTS.forEach(f=>document.fonts.load('700 32px "'+f+'"'));document.fonts.ready.then(()=>cv.requestRenderAll());
+
+/* history */
+function snap(){if(lock)return;hist=hist.slice(0,hi+1);hist.push(JSON.stringify({c:cv.toJSON(['fx']),W,H}));if(hist.length>40)hist.shift();hi=hist.length-1}
+const snapSoon=()=>{if(lock)return;clearTimeout(tmr);tmr=setTimeout(snap,300)};
+function restore(s){lock=true;const o=JSON.parse(s);W=o.W;H=o.H;cv.loadFromJSON(o.c,()=>{fit();cv.renderAll();lock=false;setTab(tab)})}
+const undo=()=>{if(hi>0){hi--;restore(hist[hi])}};
+const redo=()=>{if(hi<hist.length-1){hi++;restore(hist[hi])}};
+['object:added','object:modified','object:removed'].forEach(e=>cv.on(e,snapSoon));
+cv.on('selection:created',()=>setTab('edit'));
+cv.on('selection:updated',()=>{if(tab==='edit')setTab('edit')});
+cv.on('selection:cleared',()=>{if(tab==='edit')setTab('edit')});
+function setSize(v){const [w,h]=v.split('x').map(Number);W=w;H=h;fit();snap()}
+addEventListener('keydown',e=>{const o=cv.getActiveObject();if((e.key==='Delete'||e.key==='Backspace')&&o&&!o.isEditing&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){cv.remove(o);cv.discardActiveObject()}});
+
+/* helpers */
+const upd=fn=>{const o=cv.getActiveObject();if(!o)return;fn(o);o.dirty=true;cv.requestRenderAll();snapSoon()};
+const setProp=(k,v)=>upd(o=>o.set(k,v));
+const put=o=>{cv.add(o);cv.setActiveObject(o);cv.requestRenderAll()};
+const own=img=>{const e=img.getElement(),c=document.createElement('canvas');c.width=e.naturalWidth||e.width;c.height=e.naturalHeight||e.height;c.getContext('2d').drawImage(e,0,0);return new fabric.Image(c)};
+const hex=v=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?v:'#000000';
+
+async function addText(t,size,wt){
+  await document.fonts.load('700 40px Poppins');
+  put(new fabric.Textbox(t,{left:W/2,top:H/2,originX:'center',originY:'center',width:W*.8,textAlign:'center',fontFamily:'Poppins',fontSize:size*S(),fontWeight:wt,fill:'#111111'}));
+}
+function addShape(k){
+  const c={left:W/2,top:H/2,originX:'center',originY:'center',fill:'#2447f5'};let o;
+  if(k==='rect')o=new fabric.Rect({...c,width:W*.4,height:W*.25});
+  else if(k==='circle')o=new fabric.Circle({...c,radius:W*.15});
+  else if(k==='tri')o=new fabric.Triangle({...c,width:W*.3,height:W*.27});
+  else if(k==='line')o=new fabric.Line([0,0,W*.4,0],{...c,stroke:'#2447f5',strokeWidth:10});
+  else{const p=[];for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,R=i%2?40:100;p.push({x:R*Math.cos(a),y:R*Math.sin(a)})}o=new fabric.Polygon(p,{...c,scaleX:W*.3/200,scaleY:W*.3/200})}
+  put(o);
+}
+const addEmoji=e=>put(new fabric.Text(e,{left:W/2,top:H/2,originX:'center',originY:'center',fontSize:180*S()}));
+function up(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>fabric.Image.fromURL(r.result,img=>{const s=Math.min(W*.8/img.width,H*.8/img.height);img.set({scaleX:s,scaleY:s,left:W/2,top:H/2,originX:'center',originY:'center'});put(img)});
+  r.readAsDataURL(f);inp.value='';
+}
+function bgGrad(a,b){
+  const r=new fabric.Rect({left:0,top:0,width:W,height:H,fill:new fabric.Gradient({type:'linear',coords:{x1:0,y1:0,x2:W,y2:H},colorStops:[{offset:0,color:a},{offset:1,color:b}]})});
+  cv.add(r);r.sendToBack();cv.setActiveObject(r);cv.requestRenderAll();
+}
+const bgColor=v=>{cv.setBackgroundColor(v,()=>cv.renderAll());snapSoon()};
+
+/* templates */
+const T=(t,x,y,o)=>new fabric.Textbox(t,{left:W*x,top:H*y,originX:'center',originY:'center',width:W*.84,textAlign:'center',fontFamily:'Poppins',fill:'#111',...o});
+const TPL={
+  sale:()=>{bgGrad('#ff3d3d','#ffb300');cv.add(new fabric.Circle({left:W*.5,top:H*.58,originX:'center',originY:'center',radius:W*.25,fill:'#ffffff'}),
+    T('MEGA SALE',.5,.2,{fontSize:H*.14,fontFamily:'Bebas Neue',fill:'#fff'}),T('50%',.5,.56,{fontSize:H*.17,fontWeight:'bold',fill:'#ff3d3d'}),T('OFF',.5,.69,{fontSize:H*.07,fontWeight:'bold',fill:'#111'}),T('Aaj hi kharido!',.5,.9,{fontSize:H*.05,fill:'#fff'}))},
+  quote:()=>{bgGrad('#111827','#374151');cv.add(T('“',.5,.2,{fontSize:H*.25,fontFamily:'Playfair Display',fill:'#f9d423'}),T('Sapne wo nahi jo hum sote hue dekhte hain,\nsapne wo hain jo hume sone nahi dete.',.5,.5,{fontSize:H*.05,fontFamily:'Playfair Display',fill:'#fff'}),T('— Sovienter',.5,.82,{fontSize:H*.035,fill:'#f9d423'}))},
+  event:()=>{bgGrad('#2447f5','#7a2cff');cv.add(T('GRAND\nOPENING',.5,.3,{fontSize:H*.12,fontFamily:'Bebas Neue',fill:'#fff'}),new fabric.Rect({left:W*.5,top:H*.62,originX:'center',originY:'center',width:W*.7,height:H*.12,rx:30,ry:30,fill:'#f9d423'}),T('25 Dec  |  10 AM',.5,.62,{fontSize:H*.05,fontWeight:'bold'}),T('Aap sabhi aamantrit hain',.5,.85,{fontSize:H*.04,fill:'#fff'}))}
+};
+function tpl(k){lock=true;cv.clear();cv.setBackgroundColor('#fff');TPL[k]();lock=false;cv.discardActiveObject();cv.renderAll();snap();toast('Template lag gaya. Kisi bhi cheez par tap karke edit karo.')}
+
+/* AI image (Pollinations: free, no API key) */
+function ai(mode){
+  const p=aiPrompt.trim();if(!p){toast('Pehle prompt likho');return}
+  const poster=mode==='poster',k=1024/Math.max(W,H),w=poster?Math.round(W*k):1024,h=poster?Math.round(H*k):1024;
+  const url='https://image.pollinations.ai/prompt/'+encodeURIComponent(p+(aiStyle?', '+aiStyle:'')+', high quality')+'?width='+w+'&height='+h+'&nologo=true&seed='+(Math.random()*1e6|0);
+  toast('AI image ban rahi hai... 10 se 40 second lagte hain',0);
+  fabric.Image.fromURL(url,(raw,err)=>{
+    hideToast();if(err||!raw||!raw.width){toast('AI image nahi bani. Dobara try karo ya prompt chhota karo.',4500);return}
+    let img;try{img=own(raw)}catch(e){toast('Image security ki wajah se nahi li ja saki.',4000);return}
+    if(poster){
+      lock=true;const s=Math.max(W/img.width,H/img.height);
+      img.set({scaleX:s,scaleY:s,left:W/2,top:H/2,originX:'center',originY:'center'});cv.add(img);img.sendToBack();
+      cv.add(new fabric.Rect({left:0,top:H*.62,width:W,height:H*.38,fill:'#000',opacity:.45}),
+        T(p.length>70?p.slice(0,70)+'…':p,.5,.82,{fontSize:H*.065,fontWeight:'bold',fill:'#fff',shadow:new fabric.Shadow({color:'rgba(0,0,0,.6)',blur:12})}));
+      lock=false;cv.discardActiveObject();cv.renderAll();snap();toast('Poster ban gaya. Text par tap karke badlo.');
+    }else{const s=Math.min(W*.7/img.width,H*.7/img.height);img.set({scaleX:s,scaleY:s,left:W/2,top:H/2,originX:'center',originY:'center'});put(img)}
+  },{crossOrigin:'anonymous'});
+}
+
+/* image filters */
+const PRE={vivid:{c:.2,s:.4},bw:{g:1,c:.1},vintage:{se:1,b:.05},soft:{b:.1,c:-.1,bl:.02},auto:{b:.05,c:.15,s:.2},none:{}};
+function applyFx(o){
+  const x=o.fx||{},F=fabric.Image.filters,f=[];
+  if(x.b)f.push(new F.Brightness({brightness:x.b}));if(x.c)f.push(new F.Contrast({contrast:x.c}));
+  if(x.s)f.push(new F.Saturation({saturation:x.s}));if(x.bl)f.push(new F.Blur({blur:x.bl}));
+  if(x.g)f.push(new F.Grayscale());if(x.se)f.push(new F.Sepia());if(x.iv)f.push(new F.Invert());
+  o.filters=f;o.applyFilters();
+}
+const setFx=(k,v)=>upd(o=>{o.fx=o.fx||{};o.fx[k]=+v;applyFx(o)});
+const preset=n=>{upd(o=>{o.fx={...PRE[n]};applyFx(o)});setTab('edit')};
+async function setFont(f){await document.fonts.load('700 32px "'+f+'"');upd(o=>{o.set('fontFamily',f);o.initDimensions&&o.initDimensions()})}
+const toggle=(k,a,b)=>upd(o=>o.set(k,o[k]===a?b:a));
+const layer=a=>{const o=cv.getActiveObject();if(!o)return;
+  if(a==='front')o.bringToFront();else if(a==='back')o.sendToBack();else if(a==='flip')o.set('flipX',!o.flipX);
+  else if(a==='dup')o.clone(c=>{c.set({left:o.left+30,top:o.top+30});cv.add(c);cv.setActiveObject(c)});
+  else if(a==='del'){cv.remove(o);cv.discardActiveObject()}
+  cv.requestRenderAll();snapSoon()};
+
+/* export */
+function ex(fmt){
+  cv.discardActiveObject();cv.renderAll();
+  const u=cv.toDataURL({format:fmt==='png'?'png':'jpeg',quality:.92,multiplier:1/Z});
+  if(fmt==='pdf'){const d=new jspdf.jsPDF({orientation:W>H?'l':'p',unit:'px',format:[W,H]});d.addImage(u,'JPEG',0,0,W,H);d.save('sovienter-design.pdf');return}
+  const a=document.createElement('a');a.href=u;a.download='sovienter-design.'+(fmt==='png'?'png':'jpg');a.click();toast('Save ho raha hai');
+}
+function fresh(){if(!confirm('Poora design clear karna hai?'))return;lock=true;cv.clear();cv.setBackgroundColor('#fff');lock=false;cv.renderAll();snap()}
+
+/* panels */
+const rng=(l,min,max,step,val,fn)=>'<div style="width:100%"><label class="s">'+l+'<span>'+(+val).toFixed(2).replace(/\.?0+$/,'')+'</span></label><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+val+'" oninput="'+fn+'"></div>';
+$('panel').addEventListener('input',e=>{const t=e.target,l=t.previousElementSibling;if(t.type==='range'&&l&&l.lastChild)l.lastChild.textContent=t.value});
+const TABS={
+  add:()=>'<b class="h">Text</b><div class="grid"><button onclick="addText(\'Heading likho\',110,\'bold\')">Heading</button><button onclick="addText(\'Subheading\',64,\'normal\')">Subheading</button><button onclick="addText(\'Yahan text likho\',40,\'normal\')">Body</button></div>'
+   +'<b class="h">Shapes</b><div class="grid">'+[['rect','▭ Box'],['circle','● Circle'],['tri','▲ Triangle'],['star','★ Star'],['line','― Line']].map(s=>'<button onclick="addShape(\''+s[0]+'\')">'+s[1]+'</button>').join('')+'</div>'
+   +'<b class="h">Photo</b><div class="grid"><label class="btn">🖼 Photo upload<input type="file" accept="image/*" hidden onchange="up(this)"></label></div>'
+   +'<b class="h">Stickers</b><div class="grid">'+'😀 😍 🔥 ⭐ ❤️ 🎉 🎁 🛍️ 💰 ✨ 👍 🪔 🎂 ✅'.split(' ').map(e=>'<button onclick="addEmoji(\''+e+'\')">'+e+'</button>').join('')+'</div>'
+   +'<b class="h">Background</b><div class="grid"><input type="color" value="#ffffff" oninput="bgColor(this.value)" aria-label="Background color">'+GR.map(g=>'<button class="sw" aria-label="Gradient" style="background:linear-gradient(135deg,'+g[0]+','+g[1]+')" onclick="bgGrad(\''+g[0]+'\',\''+g[1]+'\')"></button>').join('')+'</div>'
+   +'<b class="h">Templates</b><div class="grid"><button onclick="tpl(\'sale\')">🔥 Sale</button><button onclick="tpl(\'quote\')">💬 Quote</button><button onclick="tpl(\'event\')">🎉 Event</button></div>',
+  ai:()=>'<b class="h">AI se banao</b><textarea id="pr" placeholder="Jaise: Diwali sale poster, golden diyas, dark background" oninput="aiPrompt=this.value">'+aiPrompt.replace(/</g,'&lt;')+'</textarea>'
+   +'<div class="grid">'+[['','Auto'],['photorealistic','Realistic'],['cartoon illustration','Cartoon'],['3D render','3D'],['anime style','Anime'],['flat vector logo','Logo'],['watercolor painting','Watercolor']].map(s=>'<button class="chip'+(aiStyle===s[0]?' on':'')+'" onclick="aiStyle=\''+s[0]+'\';setTab(\'ai\')">'+s[1]+'</button>').join('')+'</div>'
+   +'<div class="grid"><button class="p" onclick="ai(\'layer\')">🖼 Image banao</button><button class="p" onclick="ai(\'poster\')">🪄 Poster banao</button></div>'
+   +'<p class="hint">English prompt zyada accha kaam karta hai. Image layer ban jaati hai, to move, filter aur text upar se jod sakte ho.</p>',
+  edit:()=>{
+    const o=cv.getActiveObject();if(!o)return '<p class="hint">Text, shape ya photo par tap karke select karo, phir yahan edit karo.</p>';
+    const tx=/text/.test(o.type),im=o.type==='image';let h='';
+    if(tx){
+      h+='<div class="grid"><select onchange="setFont(this.value)" aria-label="Font">'+FONTS.map(f=>'<option'+(o.fontFamily===f?' selected':'')+'>'+f+'</option>').join('')+'</select>'
+        +'<button onclick="toggle(\'fontWeight\',\'bold\',\'normal\')"><b>B</b></button><button onclick="toggle(\'fontStyle\',\'italic\',\'normal\')"><i>I</i></button>'
+        +['left','center','right'].map(a=>'<button onclick="setProp(\'textAlign\',\''+a+'\')">'+{left:'⬅',center:'↔',right:'➡'}[a]+'</button>').join('')+'</div>'
+        +rng('Size',12,300,1,Math.round(o.fontSize),'setProp(\'fontSize\',+this.value)');
+    }
+    if(!im)h+='<div class="grid"><span class="hint">Color</span><input type="color" value="'+hex(o.fill)+'" oninput="setProp(\'fill\',this.value)"><span class="hint">Outline</span><input type="color" value="'+hex(o.stroke)+'" oninput="setProp(\'stroke\',this.value)"></div>'+rng('Outline width',0,30,1,o.strokeWidth||0,'setProp(\'strokeWidth\',+this.value)');
+    if(o.type==='rect')h+=rng('Corner',0,200,1,o.rx||0,'upd(o=>o.set({rx:+this.value,ry:+this.value}))');
+    if(im){
+      const x=o.fx||{};
+      h+='<div class="grid">'+[['auto','✨ Auto'],['vivid','Vivid'],['bw','B&W'],['vintage','Vintage'],['soft','Soft'],['none','Reset']].map(p=>'<button onclick="preset(\''+p[0]+'\')">'+p[1]+'</button>').join('')+'</div>'
+        +rng('Brightness',-1,1,.05,x.b||0,'setFx(\'b\',this.value)')+rng('Contrast',-1,1,.05,x.c||0,'setFx(\'c\',this.value)')+rng('Saturation',-1,1,.05,x.s||0,'setFx(\'s\',this.value)')+rng('Blur',0,.5,.01,x.bl||0,'setFx(\'bl\',this.value)');
+    }
+    h+=rng('Opacity',0,1,.05,o.opacity,'setProp(\'opacity\',+this.value)')
+      +'<div class="grid"><button onclick="layer(\'front\')">⬆ Aage</button><button onclick="layer(\'back\')">⬇ Peeche</button><button onclick="layer(\'dup\')">⎘ Copy</button><button onclick="layer(\'flip\')">⇋ Flip</button><button onclick="layer(\'del\')">🗑 Delete</button></div>';
+    return h;
+  },
+  save:()=>'<b class="h">Download</b><div class="grid"><button class="p" onclick="ex(\'png\')">⬇ PNG</button><button onclick="ex(\'jpg\')">⬇ JPG</button><button onclick="ex(\'pdf\')">⬇ PDF</button></div><div class="grid"><button onclick="fresh()">🆕 Naya design</button></div><p class="hint">Size: '+W+' × '+H+' px</p>'
+};
+function setTab(t){tab=t;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('panel').innerHTML=TABS[t]()}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+fit();setTab('add');snap();
+</script>
+</body>
+</html>
