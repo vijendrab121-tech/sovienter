@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sovienter Scan</title>
 <script>
-// --- LOCK FIX: http ko hamesha https pe bhejo ---
 if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
   location.replace('https://' + location.host + location.pathname + location.search);
 }
@@ -51,6 +50,7 @@ progress{width:100%;accent-color:var(--acc)}
 <header>
   <h1><span>Sovienter</span> Scan</h1>
   <div class="row" style="flex:0 0 auto">
+    <a class="btn" href="studio.html" style="text-decoration:none;color:inherit">🎨 Studio</a>
     <label class="btn p">📷 Scan<input id="cam" type="file" accept="image/*" capture="environment"></label>
     <label class="btn">🖼 Upload<input id="up" type="file" accept="image/*" multiple></label>
   </div>
@@ -124,7 +124,7 @@ function process(src,p,out){
     let r=d[i],g=d[i+1],b=d[i+2];const y=(r*77+g*150+b*29)>>8;
     if(p.f==='bw'){const v=(y+p.br)<lm[j]*(.88-p.ct/600)?0:255;d[i]=d[i+1]=d[i+2]=v;continue}
     if(p.f==='magic'){const k=255/Math.max(40,lm[j]*1.1+6);r*=k;g*=k;b*=k;r=(r-128)*1.2+128;g=(g-128)*1.2+128;b=(b-128)*1.2+128}
-    else if(p.f==='super'){const k=255/Math.max(30,lm[j]*1.15+4);r*=k;g*=k;b*=k;r=(r-128)*1.45+128;g=(g-128)*1.45+128;b=(b-128)*1.45+128; const avg=(r+g+b)/3; if(avg>200){r=Math.min(255,r*1.05);g=Math.min(255,g*1.05);b=Math.min(255,b*1.05)}}
+    else if(p.f==='super'){const k=255/Math.max(30,lm[j]*1.15+4);r*=k;g*=k;b*=k;r=(r-128)*1.45+128;g=(g-128)*1.45+128;b=(b-128)*1.45+128;if((r+g+b)/3>200){r=Math.min(255,r*1.05);g=Math.min(255,g*1.05);b=Math.min(255,b*1.05)}}
     else if(p.f==='gray'){r=g=b=y}
     r+=p.br;g+=p.br;b+=p.br;
     d[i]=cf*(r-128)+128;d[i+1]=cf*(g-128)+128;d[i+2]=cf*(b-128)+128;
@@ -132,7 +132,7 @@ function process(src,p,out){
   c.putImageData(im,0,0);
 }
 
-/* ---------- AI-style auto edge detection ---------- */
+/* ---------- AI-style auto edge detection (Otsu + largest bright region) ---------- */
 function detect(src){
   const t=scaled(src,300),w=t.width,h=t.height,N=w*h,d=t.getContext('2d').getImageData(0,0,w,h).data,g=new Uint8Array(N),H=new Uint32Array(256);
   for(let j=0;j<N;j++){g[j]=(d[j*4]*77+d[j*4+1]*150+d[j*4+2]*29)>>8;H[g[j]]++}
@@ -161,7 +161,7 @@ function detect(src){
   return B.p.map(([x,y])=>({x:x/w,y:y/h}));
 }
 
-/* ---------- Perspective warp ---------- */
+/* ---------- Perspective warp (homography) ---------- */
 function warp(src,qd){
   const P=qd.map(p=>[p.x*src.width,p.y*src.height]),dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
   let W=Math.round(Math.max(dist(P[0],P[1]),dist(P[3],P[2]))),Hh=Math.round(Math.max(dist(P[0],P[3]),dist(P[1],P[2])));
@@ -222,7 +222,7 @@ $('rl').onclick=()=>rotate(-90);$('rr').onclick=()=>rotate(90);
 $('reset').onclick=()=>{if(cur<0)return;const p=pages[cur];p.br=p.ct=0;p.f='magic';setBase(p,p.orig);toast('Original wapas aa gaya')};
 $('del').onclick=()=>{if(cur<0)return;pages.splice(cur,1);select(Math.min(cur,pages.length-1));toast('Page delete ho gaya')};
 
-/* ---------- Crop ---------- */
+/* ---------- Crop with 4 free corners ---------- */
 const ov=$('ov');
 function endCrop(){editing=false;ov.style.display='none';$('apply').style.display='none'}
 function drawQ(){
@@ -266,6 +266,7 @@ $('pdf').onclick=()=>{
   });
   doc.save('sovienter-scan.pdf');toast('PDF ban gayi');
 };
+
 $('shareBtn').onclick=async()=>{
   if(!pages.length){toast('Pehle koi page scan karo');return}
   if(!window.jspdf){toast('PDF library load nahi hui');return}
@@ -275,17 +276,13 @@ $('shareBtn').onclick=async()=>{
     if(!doc)doc=new jsPDF({orientation:o,unit:'mm',format:'a4'});else doc.addPage('a4',o);
     doc.addImage(c.toDataURL('image/jpeg',.88),'JPEG',(pw-w*k)/2,(ph-h*k)/2,w*k,h*k);
   });
-  const blob=doc.output('blob');
-  const file=new File([blob],'sovienter-scan.pdf',{type:'application/pdf'});
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{await navigator.share({files:[file],title:'Sovienter Scan',text:'Mera scanned document - Sovienter Scan se banaya'});return}catch(e){}
-  }
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='sovienter-scan.pdf';a.click();
+  const blob=doc.output('blob'),file=new File([blob],'sovienter-scan.pdf',{type:'application/pdf'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Sovienter Scan',text:'Mera scanned document - Sovienter Scan se banaya'});return}catch(e){}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sovienter-scan.pdf';a.click();
   window.open('https://wa.me/?text='+encodeURIComponent('Mera scanned document - Sovienter Scan se banaya: https://sovienter.com'),'_blank');
 };
 
-/* ---------- OCR ---------- */
+/* ---------- OCR (on-device AI, Tesseract.js) ---------- */
 let tessLoaded=null;
 const loadTess=()=>tessLoaded||(tessLoaded=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>{tessLoaded=null;no()};document.head.appendChild(s)}));
 $('ocrBtn').onclick=async()=>{
