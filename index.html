@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sovienter Scan</title>
+<title>Sovienter Scan - Free Online Document Scanner | Photo se PDF Banao</title>
+<meta name="description" content="Sovienter Scan se photo kheenchkar turant saaf PDF aur JPG banao. Magic Filter, Auto Crop, OCR se text nikalo. Free, fast aur mobile friendly.">
+<meta name="theme-color" content="#2447f5">
 <script>
 if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
   location.replace('https://' + location.host + location.pathname + location.search);
@@ -44,6 +46,16 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #ocr .box{background:var(--panel);max-width:700px;margin:auto;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
 #ocr textarea{width:100%;height:50vh;font:15px/1.5 system-ui;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
 progress{width:100%;accent-color:var(--acc)}
+footer{max-width:1100px;margin:10px auto 0;padding:18px 14px 26px;border-top:1px solid var(--line);color:var(--mut);font-size:13.5px}
+.f-grid{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:flex-start}
+.f-brand{max-width:420px}
+.f-brand b{color:var(--ink);font-size:16px}
+.f-brand b span{color:var(--acc)}
+.f-links{display:flex;flex-wrap:wrap;gap:14px}
+.f-links a{color:var(--mut);text-decoration:none}
+.f-links a:hover{color:var(--acc);text-decoration:underline}
+.f-bottom{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+@media(max-width:800px){.f-grid{flex-direction:column}.f-bottom{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -88,6 +100,28 @@ progress{width:100%;accent-color:var(--acc)}
   </aside>
 </main>
 <div id="strip"></div>
+
+<footer>
+  <div class="f-grid">
+    <div class="f-brand">
+      <b><span>Sovienter</span> Scan</b>
+      <p style="margin:6px 0 0">Photo se turant saaf PDF banao. Magic Filter, Auto Crop aur OCR ke saath. Free, fast aur koi sign-up nahi chahiye. Tumhari photo tumhare phone me hi process hoti hai, server pe upload nahi hoti.</p>
+    </div>
+    <nav class="f-links" aria-label="Footer">
+      <a href="studio.html">Studio</a>
+      <a href="about.html">About</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms</a>
+      <a href="contact.html">Contact</a>
+      <a href="mailto:support@sovienter.com">support@sovienter.com</a>
+    </nav>
+  </div>
+  <div class="f-bottom">
+    <span>© 2026 Sovienter Scan. All rights reserved.</span>
+    <span>Made in India • Free for everyone</span>
+  </div>
+</footer>
+
 <div id="msg"></div>
 
 <div id="ocr"><div class="box">
